@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bybit Crypto Radar | Volatility & Volume Scanner</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@500;700;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg-dark: #0a0e27;
+            --bg-card: #131829;
+            --bg-card-hover: #1a1f3a;
+            --accent-cyan: #00f5ff;
+            --accent-magenta: #ff006e;
+            --accent-yellow: #ffbe0b;
+            --accent-green: #06ffa5;
+            --text-primary: #e8f1ff;
+            --text-secondary: #8b95b0;
+            --border-color: rgba(0, 245, 255, 0.2);
+            --gradient-long: linear-gradient(135deg, #06ffa5 0%, #00f5ff 100%);
+            --gradient-short: linear-gradient(135deg, #ff006e 0%, #ffbe0b 100%);
+            --gradient-range: linear-gradient(135deg, #8b95b0 0%, #5a6b8c 100%);
+        }
+        
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            position: relative;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(0, 245, 255, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(255, 0, 110, 0.05) 0%, transparent 50%);
+            animation: backgroundPulse 10s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        @keyframes backgroundPulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.6; }
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 40px 20px;
+            background: rgba(19, 24, 41, 0.6);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            margin-bottom: 30px;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: conic-gradient(
+                from 0deg at 50% 50%,
+                transparent 0deg,
+                var(--accent-cyan) 60deg,
+                transparent 120deg
+            );
+            animation: rotate 10s linear infinite;
+            opacity: 0.1;
+        }
+        
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .header h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3.5rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-magenta));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        
+        .header .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            position: relative;
+            z-index: 1;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .control-group {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+        
+        .control-group:hover {
+            border-color: var(--accent-cyan);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 245, 255, 0.2);
+        }
+        
+        .control-group label {
+            display: block;
+            font-size: 0.9rem;
+            color: var(--accent-cyan);
+            margin-bottom: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .control-group select,
+        .control-group input {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        
+        #searchSymbol {
+            padding-left: 12px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2300f5ff' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: calc(100% - 12px) center;
+            background-size: 16px;
+            padding-right: 40px;
+        }
+        
+        #searchSymbol::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.6;
+        }
+        
+        .control-group select:focus,
+        .control-group input:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 3px rgba(0, 245, 255, 0.1);
+        }
+        
+        .btn-scan {
+            grid-column: 1 / -1;
+            padding: 18px 40px;
+            background: var(--gradient-long);
+            border: none;
+            border-radius: 12px;
+            color: var(--bg-dark);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-scan::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        .btn-scan:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+        
+        .btn-scan:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 40px rgba(6, 255, 165, 0.4);
+        }
+        
+        .btn-scan:active {
+            transform: scale(0.98);
+        }
+        
+        .btn-scan:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--gradient-long);
+        }
+        
+        .stat-card.long::before { background: var(--gradient-long); }
+        .stat-card.short::before { background: var(--gradient-short); }
+        .stat-card.range::before { background: var(--gradient-range); }
+        
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            font-family: 'Orbitron', sans-serif;
+        }
+        
+        .stat-card.long .stat-value { color: var(--accent-green); }
+        .stat-card.short .stat-value { color: var(--accent-magenta); }
+        .stat-card.range .stat-value { color: var(--text-secondary); }
+        
+        .radar-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .radar-card {
+            background: var(--bg-card);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        
+        .radar-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, transparent 0%, rgba(0, 245, 255, 0.05) 100%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+        
+        .radar-card:hover::before {
+            opacity: 1;
+        }
+        
+        .radar-card:hover {
+            transform: translateY(-8px);
+            border-color: var(--accent-cyan);
+            box-shadow: 0 20px 60px rgba(0, 245, 255, 0.3);
+        }
+        
+        .radar-card.long {
+            border-left: 4px solid var(--accent-green);
+        }
+        
+        .radar-card.short {
+            border-left: 4px solid var(--accent-magenta);
+        }
+        
+        .radar-card.range {
+            border-left: 4px solid var(--text-secondary);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .symbol {
+            font-size: 1.4rem;
+            font-weight: 700;
+            font-family: 'Orbitron', sans-serif;
+        }
+        
+        .direction-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .direction-badge.long {
+            background: rgba(6, 255, 165, 0.2);
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green);
+        }
+        
+        .direction-badge.short {
+            background: rgba(255, 0, 110, 0.2);
+            color: var(--accent-magenta);
+            border: 1px solid var(--accent-magenta);
+        }
+        
+        .direction-badge.range {
+            background: rgba(139, 149, 176, 0.2);
+            color: var(--text-secondary);
+            border: 1px solid var(--text-secondary);
+        }
+        
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .metric {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 8px;
+        }
+        
+        .metric-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+        
+        .metric-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            font-family: 'Orbitron', sans-serif;
+        }
+        
+        .metric-value.high { color: var(--accent-green); }
+        .metric-value.medium { color: var(--accent-yellow); }
+        .metric-value.low { color: var(--accent-magenta); }
+        
+        .progress-group {
+            margin-top: 12px;
+        }
+        
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            margin-bottom: 6px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        
+        .progress-fill.volatility { background: var(--gradient-long); }
+        .progress-fill.volume { background: var(--gradient-short); }
+        
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            font-size: 1.2rem;
+            color: var(--accent-cyan);
+        }
+        
+        .spinner {
+            width: 60px;
+            height: 60px;
+            margin: 20px auto;
+            border: 4px solid var(--border-color);
+            border-top-color: var(--accent-cyan);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--text-secondary);
+        }
+        
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--border-color);
+            margin-top: 40px;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .radar-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .live-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>⚡ BYBIT RADAR</h1>
+            <p class="subtitle">Volatility & Volume Scanner | Real-time Market Analysis</p>
+        </header>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label>🔍 Поиск монеты</label>
+                <input type="text" id="searchSymbol" placeholder="BTC, ETH, SOL..." style="text-transform: uppercase;">
+            </div>
+            
+            <div class="control-group">
+                <label>⏰ Период анализа</label>
+                <select id="timeframe">
+                    <option value="1h">1 час (топ-30 монет)</option>
+                    <option value="3h">3 часа (топ-30 монет)</option>
+                    <option value="6h">6 часов (топ-30 монет)</option>
+                    <option value="24h" selected>24 часа (все монеты)</option>
+                </select>
+                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 6px; line-height: 1.4;">
+                    💡 24ч - быстро, все монеты<br>
+                    1-6ч - медленнее, точные данные
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label>📊 Мин. волатильность (%)</label>
+                <input type="number" id="minVolatility" value="5" min="0" max="100" step="0.5">
+            </div>
+            
+            <div class="control-group">
+                <label>💰 Мин. объем (USDT)</label>
+                <input type="number" id="minVolume" value="1000000" min="0" step="100000">
+            </div>
+            
+            <div class="control-group">
+                <label>📈 Направление</label>
+                <select id="direction">
+                    <option value="all">Все</option>
+                    <option value="long">Long ↗</option>
+                    <option value="short">Short ↘</option>
+                    <option value="range">Range ↔</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label>🔝 Топ монет</label>
+                <input type="number" id="topCount" value="20" min="5" max="100" step="5">
+            </div>
+            
+            <button class="btn-scan" onclick="scanMarket()" id="scanBtn">
+                <span style="position: relative; z-index: 1;">🔍 СКАНИРОВАТЬ РЫНОК</span>
+            </button>
+        </div>
+        
+        <div class="stats" id="stats" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-label">Режим данных</div>
+                <div class="stat-value" id="dataMode" style="font-size: 1.3rem;">24ч</div>
+            </div>
+            <div class="stat-card long">
+                <div class="stat-label">Long тренды</div>
+                <div class="stat-value" id="longCount">0</div>
+            </div>
+            <div class="stat-card short">
+                <div class="stat-label">Short тренды</div>
+                <div class="stat-value" id="shortCount">0</div>
+            </div>
+            <div class="stat-card range">
+                <div class="stat-label">Range (флэт)</div>
+                <div class="stat-value" id="rangeCount">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Средняя волатильность</div>
+                <div class="stat-value" id="avgVolatility">0%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Общий объем</div>
+                <div class="stat-value" id="totalVolume">$0</div>
+            </div>
+        </div>
+        
+        <div id="results">
+            <div class="empty-state">
+                <div class="empty-state-icon">📡</div>
+                <p>Выберите параметры и нажмите "Сканировать рынок"</p>
+            </div>
+        </div>
+        
+        <footer class="footer">
+            <p>
+                <span class="live-indicator"></span> 
+                <span id="dataSource">Bybit API</span> | Real-time data
+            </p>
+            <p style="margin-top: 8px; font-size: 0.85rem; color: var(--accent-cyan);" id="marketCount">
+                📊 Загружено монет: <span id="totalMarkets">—</span> | Найдено: <span id="filteredMarkets">0</span>
+            </p>
+            <p style="margin-top: 10px; font-size: 0.8rem;">⚠️ Это инструмент для анализа. Не является финансовым советом.</p>
+        </footer>
+    </div>
+    
+    <script>
+        // Определяем API endpoint в зависимости от окружения
+        const IS_LOCALHOST = window.location.hostname === 'localhost' || 
+                            window.location.hostname === '127.0.0.1' ||
+                            window.location.hostname === '';
+        
+        const BYBIT_API_URL = 'https://api.bybit.com/v5/market/tickers?category=linear';
+        
+        // CORS Proxies
+        const CORS_PROXY_1 = 'https://corsproxy.io/?';
+        const CORS_PROXY_2 = 'https://api.allorigins.win/raw?url=';
+        
+        console.log('🌐 Environment:', {
+            hostname: window.location.hostname,
+            isLocalhost: IS_LOCALHOST
+        });
+        
+        let marketData = [];
+        
+        function formatNumber(num, decimals = 2) {
+            if (num >= 1e9) return (num / 1e9).toFixed(decimals) + 'B';
+            if (num >= 1e6) return (num / 1e6).toFixed(decimals) + 'M';
+            if (num >= 1e3) return (num / 1e3).toFixed(decimals) + 'K';
+            return num.toFixed(decimals);
+        }
+        
+        function formatVolume(volume) {
+            return '$' + formatNumber(volume, 1);
+        }
+        
+        function detectDirection(priceChange, volatility) {
+            if (volatility < 2) return 'range';
+            if (priceChange > 2) return 'long';
+            if (priceChange < -2) return 'short';
+            return 'range';
+        }
+        
+        // Получение kline (свечей) для расчета волатильности за короткие периоды
+        async function fetchKlineForSymbol(symbol, timeframe) {
+            // Маппинг таймфреймов на интервалы Bybit
+            const intervalMap = {
+                '1h': '60',   // 60 минут
+                '3h': '180',  // 180 минут  
+                '6h': '360',  // 360 минут
+                '24h': 'D'    // День (но для 24h используем ticker API)
+            };
+            
+            const interval = intervalMap[timeframe] || '60';
+            const limit = 1; // Берем только последнюю свечу
+            
+            const directUrl = `https://api.bybit.com/v5/market/kline?category=linear&symbol=${symbol}&interval=${interval}&limit=${limit}`;
+            
+            // ВСЕГДА сначала пробуем serverless функцию (работает везде)
+            const endpoints = [
+                {
+                    url: `/api/bybit?symbol=${symbol}&interval=${interval}&limit=${limit}`,
+                    name: 'Serverless Kline'
+                },
+                {
+                    url: CORS_PROXY_1 + encodeURIComponent(directUrl),
+                    name: 'CORS Proxy 1'
+                },
+                {
+                    url: CORS_PROXY_2 + encodeURIComponent(directUrl),
+                    name: 'CORS Proxy 2'
+                }
+            ];
+            
+            // Локально добавляем прямой запрос
+            if (IS_LOCALHOST) {
+                endpoints.push({
+                    url: directUrl,
+                    name: 'Direct'
+                });
+            }
+            
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(endpoint.url);
+                    if (!response.ok) continue;
+                    
+                    const data = await response.json();
+                    if (data.retCode !== 0 || !data.result?.list?.[0]) continue;
+                    
+                    const candle = data.result.list[0];
+                    // Формат: [timestamp, open, high, low, close, volume, turnover]
+                    return {
+                        timestamp: parseInt(candle[0]),
+                        open: parseFloat(candle[1]),
+                        high: parseFloat(candle[2]),
+                        low: parseFloat(candle[3]),
+                        close: parseFloat(candle[4]),
+                        volume: parseFloat(candle[5]),
+                        turnover: parseFloat(candle[6]),
+                        _source: endpoint.name
+                    };
+                } catch (e) {
+                    continue;
+                }
+            }
+            
+            console.warn(`Failed to fetch kline for ${symbol}`);
+            return null;
+        }
+        
+        // Гибридная функция: для 24h - все монеты, для 1h/3h/6h - топ-30 через kline
+        async function fetchBybitDataHybrid(timeframe) {
+            console.log(`🔄 Fetching data for timeframe: ${timeframe}`);
+            
+            if (timeframe === '24h') {
+                // Быстрый путь - используем ticker API для всех монет
+                console.log('⚡ Using fast ticker API (all markets)');
+                return await fetchBybitData();
+            } else {
+                // Медленный путь - получаем топ-30 и запрашиваем kline для каждой
+                console.log(`⏳ Using kline API for timeframe ${timeframe} (top 30 markets)`);
+                
+                // Сначала получаем все тикеры для сортировки по объему
+                const allTickers = await fetchBybitData();
+                
+                // Фильтруем USDT пары и сортируем по объему
+                const usdtPairs = allTickers
+                    .filter(item => item.symbol.endsWith('USDT'))
+                    .sort((a, b) => parseFloat(b.turnover24h) - parseFloat(a.turnover24h))
+                    .slice(0, 30); // Топ-30 по объему
+                
+                console.log(`📊 Processing top ${usdtPairs.length} markets...`);
+                
+                // Получаем kline данные для каждой монеты
+                const klinePromises = usdtPairs.map(ticker => 
+                    fetchKlineForSymbol(ticker.symbol, timeframe)
+                        .then(kline => ({ ticker, kline }))
+                );
+                
+                const results = await Promise.all(klinePromises);
+                
+                // Объединяем ticker данные с kline данными
+                const enhancedData = results
+                    .filter(r => r.kline !== null)
+                    .map(({ ticker, kline }) => ({
+                        ...ticker,
+                        // Заменяем 24h данные на данные из kline
+                        highPrice24h: kline.high.toString(),
+                        lowPrice24h: kline.low.toString(),
+                        price24hPcnt: ((kline.close - kline.open) / kline.open).toFixed(4),
+                        volume24h: kline.volume.toString(),
+                        turnover24h: kline.turnover.toString(),
+                        _klineData: kline,
+                        _timeframe: timeframe
+                    }));
+                
+                console.log(`✅ Successfully fetched ${enhancedData.length} markets with kline data`);
+                return enhancedData;
+            }
+        }
+        
+        async function fetchBybitData() {
+            // ПРОСТОЕ РЕШЕНИЕ: всегда пробуем относительный URL первым (работает везде)
+            const endpoints = [
+                {
+                    url: '/api/bybit',  // Относительный URL - работает на Vercel и локально
+                    name: 'Serverless API',
+                    label: 'Bybit (Vercel API)'
+                },
+                {
+                    url: CORS_PROXY_1 + encodeURIComponent(BYBIT_API_URL),
+                    name: 'CORS Proxy 1',
+                    label: 'Bybit (CORS Proxy)'
+                },
+                {
+                    url: CORS_PROXY_2 + encodeURIComponent(BYBIT_API_URL),
+                    name: 'CORS Proxy 2',
+                    label: 'Bybit (AllOrigins)'
+                }
+            ];
+            
+            // Только локально добавляем прямой запрос как последний вариант
+            if (IS_LOCALHOST) {
+                endpoints.push({
+                    url: BYBIT_API_URL,
+                    name: 'Bybit Direct',
+                    label: 'Bybit Direct API'
+                });
+            }
+            
+            console.log(`📡 Will try ${endpoints.length} sources:`, endpoints.map(e => e.name));
+            
+            let lastError = null;
+            let attemptNumber = 0;
+            
+            for (const endpoint of endpoints) {
+                attemptNumber++;
+                try {
+                    console.log(`🔄 [${attemptNumber}/${endpoints.length}] Trying ${endpoint.name}...`);
+                    
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 15000); // 15 sec
+                    
+                    const response = await fetch(endpoint.url, {
+                        signal: controller.signal
+                    });
+                    
+                    clearTimeout(timeout);
+                    
+                    console.log(`   Response: ${response.status} ${response.statusText}`);
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text().catch(() => 'No response body');
+                        console.warn(`⚠️ ${endpoint.name} failed: ${response.status}`);
+                        console.warn(`   Body: ${errorText.substring(0, 200)}`);
+                        lastError = `${endpoint.name}: HTTP ${response.status}`;
+                        continue;
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Проверяем ошибку от Vercel API
+                    if (data.error) {
+                        console.warn(`⚠️ ${endpoint.name} returned error:`, data);
+                        lastError = `${endpoint.name}: ${data.message || data.error}`;
+                        continue;
+                    }
+                    
+                    // Проверяем формат Bybit
+                    if (data.retCode !== undefined && data.retCode !== 0) {
+                        console.warn(`⚠️ ${endpoint.name} Bybit error: ${data.retMsg}`);
+                        lastError = `${endpoint.name}: ${data.retMsg}`;
+                        continue;
+                    }
+                    
+                    const marketList = data.result?.list || [];
+                    
+                    if (marketList.length === 0) {
+                        console.warn(`⚠️ ${endpoint.name} returned empty list`);
+                        lastError = `${endpoint.name}: Empty data`;
+                        continue;
+                    }
+                    
+                    console.log(`✅ SUCCESS via ${endpoint.name}: ${marketList.length} markets`);
+                    
+                    // Обновляем индикатор источника
+                    const sourceElement = document.getElementById('dataSource');
+                    if (sourceElement) {
+                        const sourceLabel = data._source || endpoint.label;
+                        sourceElement.textContent = sourceLabel;
+                        
+                        // Цвет зависит от приоритета источника
+                        if (attemptNumber === 1) {
+                            sourceElement.style.color = 'var(--accent-green)';
+                            sourceElement.title = `Основной источник: ${sourceLabel}`;
+                        } else {
+                            sourceElement.style.color = 'var(--accent-yellow)';
+                            sourceElement.title = `Запасной источник #${attemptNumber}: ${sourceLabel}`;
+                        }
+                    }
+                    
+                    return marketList;
+                    
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        console.error(`❌ ${endpoint.name} timeout (>15 sec)`);
+                        lastError = `${endpoint.name}: Timeout`;
+                    } else {
+                        console.error(`❌ ${endpoint.name} exception:`, error.message);
+                        lastError = `${endpoint.name}: ${error.message}`;
+                    }
+                }
+            }
+            
+            // Все источники провалились
+            console.error('❌ ALL SOURCES FAILED');
+            console.error('Last error:', lastError);
+            
+            const errorDetails = `Не удалось загрузить данные ни из одного источника.
+
+Окружение: ${IS_LOCALHOST ? 'Localhost' : 'Production'}
+Попытки: ${endpoints.map((e, i) => `\n${i + 1}. ${e.name}`).join('')}
+
+Последняя ошибка: ${lastError}
+
+${IS_LOCALHOST ? '\n⚠️ Проверьте консоль браузера (F12) для деталей' : '\n⚠️ Попробуйте открыть debug.html для диагностики'}`;
+            
+            throw new Error(errorDetails);
+        }
+        
+        function processMarketData(rawData, timeframe, minVol, minVolume, direction, topCount, searchQuery = '') {
+            console.log(`🔍 Processing data: ${rawData.length} markets, search="${searchQuery}"`);
+            
+            // Фильтруем только USDT пары
+            const usdtPairs = rawData.filter(item => item.symbol.endsWith('USDT'));
+            console.log(`💵 USDT pairs: ${usdtPairs.length}`);
+            
+            const processed = usdtPairs
+                .map(item => {
+                    const price = parseFloat(item.lastPrice);
+                    const high = parseFloat(item.highPrice24h);
+                    const low = parseFloat(item.lowPrice24h);
+                    const priceChange = parseFloat(item.price24hPcnt) * 100;
+                    const volume = parseFloat(item.turnover24h);
+                    
+                    const volatility = ((high - low) / low) * 100;
+                    const dir = detectDirection(priceChange, volatility);
+                    
+                    return {
+                        symbol: item.symbol,
+                        price: price,
+                        priceChange: priceChange,
+                        volatility: volatility,
+                        volume: volume,
+                        direction: dir,
+                        high: high,
+                        low: low
+                    };
+                })
+                .filter(item => {
+                    // Поиск по монете
+                    if (searchQuery) {
+                        const query = searchQuery.toUpperCase().trim();
+                        const symbol = item.symbol.toUpperCase();
+                        // Проверяем содержится ли поисковый запрос в символе
+                        if (!symbol.includes(query)) {
+                            return false;
+                        }
+                    }
+                    
+                    // Фильтры
+                    if (item.volatility < minVol) return false;
+                    if (item.volume < minVolume) return false;
+                    if (direction !== 'all' && item.direction !== direction) return false;
+                    return true;
+                })
+                .sort((a, b) => b.volatility - a.volatility)
+                .slice(0, topCount);
+            
+            console.log(`✅ After filters: ${processed.length} coins`);
+            if (searchQuery && processed.length > 0) {
+                console.log(`🎯 Found coins:`, processed.map(p => p.symbol).join(', '));
+            }
+            
+            return processed;
+        }
+        
+        function renderResults(data) {
+            const resultsDiv = document.getElementById('results');
+            const timeframe = document.getElementById('timeframe').value;
+            const timeframeLabel = {
+                '1h': '1ч',
+                '3h': '3ч',
+                '6h': '6ч',
+                '24h': '24ч'
+            }[timeframe] || '24ч';
+            
+            if (data.length === 0) {
+                const searchQuery = document.getElementById('searchSymbol').value;
+                resultsDiv.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔍</div>
+                        <p>${searchQuery ? `Монета "${searchQuery}" не найдена` : 'Нет монет, соответствующих критериям'}</p>
+                        <p style="font-size: 0.9rem; margin-top: 10px;">
+                            ${searchQuery ? 'Проверьте правильность ввода' : 'Попробуйте изменить параметры фильтрации'}
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const html = `
+                <div class="radar-grid">
+                    ${data.map(item => `
+                        <div class="radar-card ${item.direction}" onclick="openBybitChart('${item.symbol}')">
+                            <div class="card-header">
+                                <div class="symbol">${item.symbol.replace('USDT', '/USDT')}</div>
+                                <div class="direction-badge ${item.direction}">
+                                    ${item.direction === 'long' ? '↗ LONG' : item.direction === 'short' ? '↘ SHORT' : '↔ RANGE'}
+                                </div>
+                            </div>
+                            
+                            <div class="metrics">
+                                <div class="metric">
+                                    <div class="metric-label">Цена</div>
+                                    <div class="metric-value">${formatNumber(item.price, 4)}</div>
+                                </div>
+                                <div class="metric">
+                                    <div class="metric-label">Изменение ${timeframeLabel}</div>
+                                    <div class="metric-value ${item.priceChange > 0 ? 'high' : 'low'}">
+                                        ${item.priceChange > 0 ? '+' : ''}${item.priceChange.toFixed(2)}%
+                                    </div>
+                                </div>
+                                <div class="metric">
+                                    <div class="metric-label">High / Low</div>
+                                    <div class="metric-value" style="font-size: 0.9rem;">
+                                        ${formatNumber(item.high, 2)} / ${formatNumber(item.low, 2)}
+                                    </div>
+                                </div>
+                                <div class="metric">
+                                    <div class="metric-label">Объем ${timeframeLabel}</div>
+                                    <div class="metric-value" style="font-size: 0.9rem;">
+                                        ${formatVolume(item.volume)}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="progress-group">
+                                <div class="progress-label">
+                                    <span>Волатильность</span>
+                                    <span style="color: var(--accent-green);">${item.volatility.toFixed(2)}%</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill volatility" style="width: ${Math.min(item.volatility * 5, 100)}%"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="progress-group">
+                                <div class="progress-label">
+                                    <span>Объем</span>
+                                    <span style="color: var(--accent-magenta);">${formatVolume(item.volume)}</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill volume" style="width: ${Math.min((item.volume / 100000000) * 100, 100)}%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            resultsDiv.innerHTML = html;
+        }
+        
+        function updateStats(data) {
+            const statsDiv = document.getElementById('stats');
+            statsDiv.style.display = 'grid';
+            
+            const timeframe = document.getElementById('timeframe').value;
+            const modeText = {
+                '1h': '1ч (топ-30)',
+                '3h': '3ч (топ-30)',
+                '6h': '6ч (топ-30)',
+                '24h': '24ч (все)'
+            }[timeframe] || '24ч';
+            
+            document.getElementById('dataMode').textContent = modeText;
+            
+            const longCount = data.filter(item => item.direction === 'long').length;
+            const shortCount = data.filter(item => item.direction === 'short').length;
+            const rangeCount = data.filter(item => item.direction === 'range').length;
+            const avgVolatility = data.length > 0 
+                ? data.reduce((sum, item) => sum + item.volatility, 0) / data.length 
+                : 0;
+            const totalVolume = data.reduce((sum, item) => sum + item.volume, 0);
+            
+            document.getElementById('longCount').textContent = longCount;
+            document.getElementById('shortCount').textContent = shortCount;
+            document.getElementById('rangeCount').textContent = rangeCount;
+            document.getElementById('avgVolatility').textContent = avgVolatility.toFixed(2) + '%';
+            document.getElementById('totalVolume').textContent = formatVolume(totalVolume);
+        }
+        
+        function openBybitChart(symbol) {
+            const cleanSymbol = symbol.replace('USDT', '');
+            window.open(`https://www.bybit.com/trade/usdt/${cleanSymbol}USDT`, '_blank');
+        }
+        
+        async function scanMarket() {
+            const timeframe = document.getElementById('timeframe').value;
+            const minVolatility = parseFloat(document.getElementById('minVolatility').value);
+            const minVolume = parseFloat(document.getElementById('minVolume').value);
+            const direction = document.getElementById('direction').value;
+            const topCount = parseInt(document.getElementById('topCount').value);
+            const searchQuery = document.getElementById('searchSymbol').value;
+            
+            const scanBtn = document.getElementById('scanBtn');
+            scanBtn.disabled = true;
+            scanBtn.innerHTML = '<span style="position: relative; z-index: 1;">⏳ ЗАГРУЗКА...</span>';
+            
+            const timeframeText = {
+                '1h': '1 час',
+                '3h': '3 часа',
+                '6h': '6 часов',
+                '24h': '24 часа'
+            }[timeframe] || timeframe;
+            
+            // Показываем предупреждение для коротких таймфреймов
+            const isShortTimeframe = timeframe !== '24h';
+            const warningText = isShortTimeframe 
+                ? `⚠️ Для периода ${timeframeText} доступны топ-30 монет по объему (точные данные через kline API)`
+                : `Обработка всех USDT пар`;
+            
+            document.getElementById('results').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Сканирование рынка Bybit...</p>
+                    <p style="font-size: 0.9rem; margin-top: 10px; color: var(--text-secondary);">
+                        Загрузка данных с биржи...
+                    </p>
+                    ${isShortTimeframe ? `
+                        <p style="font-size: 0.85rem; margin-top: 10px; color: var(--accent-yellow); padding: 10px; background: rgba(255, 190, 11, 0.1); border-radius: 8px; max-width: 500px; margin: 10px auto;">
+                            ${warningText}
+                        </p>
+                    ` : ''}
+                </div>
+            `;
+            
+            try {
+                // Используем гибридную функцию
+                const rawData = await fetchBybitDataHybrid(timeframe);
+                
+                // Обновляем счетчик всех монет
+                const totalUSDT = rawData.filter(item => item.symbol.endsWith('USDT')).length;
+                document.getElementById('totalMarkets').textContent = totalUSDT;
+                
+                console.log(`📊 Total markets loaded: ${rawData.length}`);
+                console.log(`💵 USDT pairs: ${totalUSDT}`);
+                
+                document.getElementById('results').innerHTML = `
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Анализ данных...</p>
+                        <p style="font-size: 0.9rem; margin-top: 10px; color: var(--text-secondary);">
+                            Обработка ${totalUSDT} монет | Период: ${timeframeText} | ${searchQuery ? `Поиск: "${searchQuery}"` : `Топ ${topCount}`}
+                        </p>
+                    </div>
+                `;
+                
+                const processedData = processMarketData(
+                    rawData,
+                    timeframe,
+                    minVolatility,
+                    minVolume,
+                    direction,
+                    topCount,
+                    searchQuery
+                );
+                
+                console.log(`✅ Found ${processedData.length} coins matching criteria`);
+                
+                // Обновляем счетчик найденных монет
+                document.getElementById('filteredMarkets').textContent = processedData.length;
+                
+                marketData = processedData;
+                renderResults(processedData);
+                updateStats(processedData);
+                
+            } catch (error) {
+                console.error('Scan error:', error);
+                document.getElementById('results').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <p>Ошибка загрузки данных</p>
+                        <div style="font-size: 0.9rem; margin-top: 15px; color: var(--text-secondary); text-align: left; max-width: 600px; margin-left: auto; margin-right: auto; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; font-family: monospace; white-space: pre-wrap;">
+                            ${error.message}
+                        </div>
+                        <div style="margin-top: 20px;">
+                            <button class="btn-scan" onclick="scanMarket()" style="display: inline-block; padding: 12px 30px; margin-right: 10px;">
+                                🔄 Повторить попытку
+                            </button>
+                            <button class="btn-scan" onclick="window.open('test-api.html', '_blank')" style="display: inline-block; padding: 12px 30px; background: var(--gradient-short);">
+                                🧪 Открыть тест API
+                            </button>
+                        </div>
+                        <p style="font-size: 0.85rem; margin-top: 15px; color: var(--accent-cyan);">
+                            💡 Откройте консоль браузера (F12 → Console) для детальных логов
+                        </p>
+                    </div>
+                `;
+            } finally {
+                scanBtn.disabled = false;
+                scanBtn.innerHTML = '<span style="position: relative; z-index: 1;">🔍 СКАНИРОВАТЬ РЫНОК</span>';
+            }
+        }
+        
+        // Автопоиск при вводе монеты (с debounce)
+        let searchTimeout;
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchSymbol');
+            if (searchInput) {
+                searchInput.addEventListener('input', function(e) {
+                    clearTimeout(searchTimeout);
+                    const value = e.target.value.trim();
+                    
+                    // Автопоиск если введено 2+ символа или поле очищено после поиска
+                    if (value.length >= 2 || (value.length === 0 && marketData.length > 0)) {
+                        searchTimeout = setTimeout(() => {
+                            scanMarket();
+                        }, 800); // Задержка 800мс
+                    }
+                });
+                
+                // Поиск при нажатии Enter
+                searchInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        clearTimeout(searchTimeout);
+                        scanMarket();
+                    }
+                });
+            }
+        });
+        
+        let autoRefreshInterval = null;
+        
+        function startAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+            autoRefreshInterval = setInterval(() => {
+                if (marketData.length > 0) {
+                    scanMarket();
+                }
+            }, 60000);
+        }
+        
+        startAutoRefresh();
+    </script>
+</body>
+</html>
